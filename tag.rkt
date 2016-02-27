@@ -2,6 +2,7 @@
 (require syntax/parse
          syntax/parse/experimental/template)
 (provide tag
+         new-tag
          add-tags
          tag-table
          tag-summary)
@@ -111,7 +112,9 @@
   (datum->syntax stx (syntax-e stx) loc-stx loc-stx))
 
 (define (syntax-summary stx)
-  (format "~a:~a ~.s"
-          (or (syntax-line stx) "?")
-          (or (syntax-column stx) "?")
-          (syntax->datum stx)))
+  (if (syntax? stx)
+      (format "~a:~a ~.s"
+              (or (syntax-line stx) "?")
+              (or (syntax-column stx) "?")
+              (syntax->datum stx))
+      (format "~a" stx)))

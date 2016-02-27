@@ -19,6 +19,7 @@
   (let ([old-mods mods])
     (proc)
     (unless (= mods old-mods)
+      (eprintf "** new mods, going again\n")
       (modfix proc))))
 
 (struct gs (dict top join get-key)
@@ -41,7 +42,7 @@
   (gs dict top join get-key))
 
 (define (make-tag-get/set top join)
-  (make-get/set (make-hash) top join #:key tag))
+  (make-get/set (make-hash) top join #:key (lambda (x) (if (syntax? x) (tag x) x))))
 
 (define (make-var-get/set top join)
   (make-get/set (make-free-id-table) top join #:key values))
