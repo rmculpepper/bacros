@@ -29,10 +29,11 @@
            (dict-ref dict (get-key k) top)]
           [(self k v)
            (defmatch (gs dict top join get-key) self)
-           (let ([old (dict-ref dict (get-key k) top)])
-             (unless (equal? v old)
+           (let* ([old (dict-ref dict (get-key k) top)]
+                  [new (join old v)])
+             (unless (equal? new old)
                (set! mods (add1 mods)))
-             (dict-set! dict (get-key k) (join old v)))]))
+             (dict-set! dict (get-key k) new))]))
 
 ;; make-get/set : Dict[K=>V] V (V V -> V) #:key (K* -> K)
 ;;             -> (case-> (K* -> V) (K* V -> Void))

@@ -5,43 +5,48 @@
          "lib.rkt")
 (provide (all-defined-out))
 
-;; A ConstInfo is one of
+;; A ConstInfo (CI) is one of
 ;; - 'top           -- no known values
-;; - (const Datum)  -- exactly one known value
+;; - (datum Datum)  -- exactly one known value (a flat datum)
+;; - (lam (Listof Id) Tag) -- exactly one known value (a lambda)
 ;; - 'bot           -- more than one possible value or value is not datum
-(struct const (datum) #:transparent)
+(struct datum (value) #:transparent)
+(struct lam (args result) #:transparent)
 
-;; constinfo-join : ConstInfo ConstInfo -> ConstInfo
-(define (constinfo-join c1 c2)
-  (cond [(eq? c1 'top) c2]
+;; ci-join : CI CI -> CI
+(define (ci-join c1 c2)
+  (cond [(equal? c1 c2) c1]
+        [(eq? c1 'top) c2]
         [(eq? c2 'top) c1]
-        [(eq? c1 'bot) 'bot]
-        [(eq? c2 'bot) 'bot]
-        [(equal? (const-datum c1) (const-datum c2)) c1]
         [else 'bot]))
 
-(define (constinfo-contains-truth c)
+;; ci-contains-truth : CI -> Boolean
+(define (ci-contains-truth c)
   (match c
     ['bot #t]
     ['top #f]
-    [(const v) (and v #t)]))
+    [(datum v) (and v #t)]
+    [(lam _ _) #t]))
 
-(define (constinfo-contains c v)
+;; ci-contains : CI Datum -> Boolean
+(define (ci-contains c d)
   (match c
     ['bot #t]
     ['top #f]
-    [(const datum) (equal? v datum)]))
+    [(datum v) (equal? v d)]
+    [(lam _ _) #f]))
 
+;; lift-apply : Procedure (Listof CI) -> CI
 (define (lift-apply f cs)
   (cond [(for/or ([c cs]) (eq? c 'top))
          (eprintf "suspicious: top inside of application... ~s to ~s\n" f cs)]
-        [(for/or ([c cs]) (eq? c 'bot)) 'bot]
-        [else
+        [(andmap datum? cs)
          (with-handlers ([(lambda (e) #t)
                           (lambda (e)
                             (eprintf "lift-apply: got exn ~s\n" (exn-message e))
                             'bot)])
-           (const (apply f (map const-datum cs))))]))
+           (datum (apply f (map datum-value cs))))]
+        [else 'bot]))
 
 (define folding-prims-table (make-free-id-table))
 (define-syntax-rule (add-folding-prims id ...)
@@ -57,8 +62,8 @@
 
 ;; ============================================================
 
-(define e-const (make-tag-get/set 'top constinfo-join))
-(define v-const (make-var-get/set 'top constinfo-join))
+(define e-const (make-tag-get/set 'top ci-join))
+(define v-const (make-var-get/set 'top ci-join))
 
 (define (vs-const vs info)
   (syntax-parse vs
@@ -68,13 +73,13 @@
 (define (es-const es)
   (map e-const (syntax->list es)))
 
-(define (analyze-const stx)
+(define (analyze stx)
   (syntax-parse stx
     #:literal-sets (kernel-literals)
     ;; Fully-Expanded Programs
     ;; -- module body
     [(#%plain-module-begin form ...)
-     (modfix (lambda () (analyze-const* #'(form ...))))]
+     (modfix (lambda () (analyze* #'(form ...))))]
     ;; -- module-level form
     [(#%provide . _) (void)]
     [(begin-for-syntax . _) (void)]
@@ -83,7 +88,7 @@
     [(#%declare . _) (void)]
     ;; -- general top-level form
     [(define-values vars e)
-     (analyze-const #'e)
+     (analyze #'e)
      (vs-const #'vars (e-const #'e))]
     [(define-syntaxes . _) stx]
     [(#%require . _) stx]
@@ -92,82 +97,82 @@
      (e-const stx (v-const #'var))]
     [(#%plain-lambda (var ...) e ...)
      (vs-const #'(var ...) 'bot)
-     (analyze-const* #'(e ...))
+     (analyze* #'(e ...))
      (e-const stx 'bot)]
     [(case-lambda [(var ...) e ...] ...)
      (vs-const #'(var ... ...) 'bot)
-     (analyze-const #'(e ... ...))
+     (analyze #'(e ... ...))
      (e-const stx 'bot)]
     [(if e1 e2 e3)
-     (analyze-const #'e1)
-     (when (constinfo-contains-truth (e-const #'e1))
-       (analyze-const #'e2)
+     (analyze #'e1)
+     (when (ci-contains-truth (e-const #'e1))
+       (analyze #'e2)
        (e-const stx (e-const #'e2)))
-     (when (constinfo-contains (e-const #'e1) #f)
-       (analyze-const #'e3)
+     (when (ci-contains (e-const #'e1) #f)
+       (analyze #'e3)
        (e-const stx (e-const #'e3)))]
     [(begin e ... e*)
-     (analyze-const* #'(e ... e*))
+     (analyze* #'(e ... e*))
      (e-const stx (e-const #'e*))]
     [(begin0 e* e ...)
-     (analyze-const* #'(e* e ...))
+     (analyze* #'(e* e ...))
      (e-const stx (e-const #'e*))]
     [(let-values ([vars rhs] ...) body ... body*)
      (for ([vars (syntax->list #'(vars ...))]
            [e (syntax->list #'(rhs ...))])
-       (analyze-const e)
+       (analyze e)
        (vs-const vars (e-const e)))
-     (analyze-const* #'(body ... body*))
+     (analyze* #'(body ... body*))
      (e-const stx (e-const #'body*))]
     [(letrec-values ([vars rhs] ...) body ...)
      (modfix
       (lambda ()
         (for ([vars (syntax->list #'(vars ...))]
               [e (syntax->list #'(rhs ...))])
-          (analyze-const e)
+          (analyze e)
           (vs-const vars (e-const e)))
-        (analyze-const* #'(body ... body*))))
+        (analyze* #'(body ... body*))))
      (e-const stx (e-const #'body*))]
     [(letrec-syntaxes+values ([svars srhs] ...) ([vvars vrhs] ...) body ...)
      (modfix
       (lambda ()
         (for ([vvars (syntax->list #'(vvars ...))]
               [e (syntax->list #'(vrhs ...))])
-          (analyze-const e)
+          (analyze e)
           (vs-const vvars (e-const e)))
-        (analyze-const* #'(body ... body*))))
+        (analyze* #'(body ... body*))))
      (e-const stx (e-const #'body*))]
     [(set! var e)
      (v-const #'var 'bot)
-     (e-const stx (const (void)))]
+     (e-const stx (datum (void)))]
     [(quote d)
-     (e-const stx (const (syntax->datum #'d)))]
+     (e-const stx (datum (syntax->datum #'d)))]
     [(quote-syntax . _)
      (e-const stx 'bot)]
     [(with-continuation-mark e1 e2 e3)
-     (analyze-const* #'(e1 e2 e3))
+     (analyze* #'(e1 e2 e3))
      (e-const stx (e-const #'e3))]
     [(#%top . var:id)
      (e-const stx (v-const #'var))]
     [(#%variable-reference . _)
      (e-const stx 'bot)]
     [(#%expression e)
-     (analyze-const #'e)
+     (analyze #'e)
      (e-const stx (e-const #'e))]
     ;; -- application
     [(#%plain-app f:folding-prim e ...)
-     (analyze-const* #'(e ...))
+     (analyze* #'(e ...))
      (e-const stx (lift-apply (attribute f.proc) (es-const #'(e ...))))]
     [(#%plain-app e ...)
-     (analyze-const* #'(e ...))
+     (analyze* #'(e ...))
      (e-const stx 'bot)]
     [_
      (raise-syntax-error #f "unhandled syntax" stx)]
     ))
 
-(define (analyze-const* stx)
+(define (analyze* stx)
   (for ([stx (syntax->list stx)])
-    (analyze-const stx)))
+    (analyze stx)))
 
 (module+ demo
   (define stx
@@ -180,8 +185,8 @@
                (* c x))))
   (define estx (expand stx))
   (define t-estx (add-tags estx))
-  (analyze-const t-estx)
-  ;; (modfix (lambda () (analyze-const t-estx)))
+  ;; (analyze t-estx)
+  (modfix (lambda () (analyze t-estx)))
   (printf "Expressions:\n")
   (dump-tag-function e-const)
   (printf "\nVariables:\n")
