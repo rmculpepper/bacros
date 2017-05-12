@@ -73,10 +73,9 @@
          (local-expand #'(#%plain-module-begin form ...)
                        (syntax-local-context)
                        null))
-       (define e-body* (add-tags e-body))
        (for ([analyze (in-list (reverse (unbox analysis-hooks)))])
-         (analyze e-body*))
-       (with-syntax ([(_ tx-form ...) (transform e-body*)])
+         (analyze e-body))
+       (with-syntax ([(_ tx-form ...) (transform e-body)])
          #'(#%module-begin tx-form ...)))]))
 
 (define-syntax (special-begin stx)
@@ -87,10 +86,9 @@
          (local-expand #'(begin form ...)
                        (syntax-local-context)
                        null))
-       (define e-body* (add-tags e-body))
        (for ([analyze (in-list (reverse (unbox analysis-hooks)))])
-         (analyze e-body*))
-       (transform e-body*))]))
+         (analyze e-body))
+       (transform e-body))]))
 
 
 ;; ============================================================
