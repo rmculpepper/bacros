@@ -1,6 +1,6 @@
 #lang racket/base
 (require (for-syntax racket/base syntax/parse)
-         "main.rkt")
+         "../main.rkt")
 (provide (all-defined-out))
 
 ;; No analysis

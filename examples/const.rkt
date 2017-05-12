@@ -3,7 +3,7 @@
          racket/set
          syntax/id-table
          syntax/parse
-         "lib.rkt")
+         "../lib.rkt")
 (provide (all-defined-out))
 
 (define external-id (add-tags (datum->syntax #f 'EXTERNAL)))
@@ -247,7 +247,7 @@
 
 ;; ============================================================
 
-(module+ demo
+(module+ main
   (provide (all-defined-out))
   (define stx
     #'(begin (define a 1)

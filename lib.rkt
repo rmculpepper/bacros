@@ -116,5 +116,5 @@
       ;; -- application
       [(#%plain-app e ...)
        (recur* #'(e ...))]
-      [_ (raise-syntax-error #f "unhandled syntax" stx)])
+      [_ (raise-syntax-error 'traverse "unhandled syntax" stx)])
     (post stx)))

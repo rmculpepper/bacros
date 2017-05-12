@@ -169,7 +169,7 @@
         [(#%plain-app e ...)
          (T (#%plain-app (recur e) ...))]
         [_
-         (raise-syntax-error #f "unhandled syntax" stx)]
+         (raise-syntax-error 'transform "unhandled syntax" stx)]
         ))
     ;; Rearm and track result
     (syntax-rearm
