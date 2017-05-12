@@ -6,6 +6,9 @@
                      "tag.rkt"))
 (provide declare-analysis
          define-special-function
+         declare-special-function
+         special-begin
+         special-module-begin
          (for-syntax (all-from-out "tag.rkt")))
 
 (begin-for-syntax
@@ -45,10 +48,20 @@
   (syntax-parse stx
     [(_ name:id rhs:expr)
      #'(begin (define name special-function-value)
-              (begin-for-syntax
-                (free-id-table-set! (quote-syntax name) rhs)))]
+              (declare-special-function name rhs))]
     [(_ (name:id . args) rhs:expr)
      #'(define-special-function name (lambda args rhs))]))
+
+(define-syntax (declare-special-function stx)
+  (syntax-parse stx
+    [(_ name:id rhs:expr)
+     #'(begin-for-syntax
+         (free-id-table-set! special-functions (quote-syntax name) rhs))]))
+
+(define special-function-value
+  (lambda _
+    (error 'special-function-value
+           "INTERNAL ERROR: should have been rewritten")))
 
 ;; ============================================================
 
@@ -60,11 +73,25 @@
          (local-expand #'(#%plain-module-begin form ...)
                        (syntax-local-context)
                        null))
-       (add-tags e-body)
-       (for ([analyze (in-list (reverse (analysis-hooks)))])
-         (analyze e-body))
-       (with-syntax ([(_ tx-form ...) (transform e-body)])
+       (define e-body* (add-tags e-body))
+       (for ([analyze (in-list (reverse (unbox analysis-hooks)))])
+         (analyze e-body*))
+       (with-syntax ([(_ tx-form ...) (transform e-body*)])
          #'(#%module-begin tx-form ...)))]))
+
+(define-syntax (special-begin stx)
+  (syntax-case stx ()
+    [(_ form ...)
+     (let ()
+       (define e-body
+         (local-expand #'(begin form ...)
+                       (syntax-local-context)
+                       null))
+       (define e-body* (add-tags e-body))
+       (for ([analyze (in-list (reverse (unbox analysis-hooks)))])
+         (analyze e-body*))
+       (transform e-body*))]))
+
 
 ;; ============================================================
 

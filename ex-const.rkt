@@ -257,9 +257,6 @@
              (define (ka _p) a)
              (define (kka _q) ka)
              (define (f x)
-               #;
-               (when (> c b)
-                 (set! d x))
                (when (> ((kka 12) 7) b) ;; never
                  (set! a (sub1 a))) ;; shouldn't infect a
                (* c x))
