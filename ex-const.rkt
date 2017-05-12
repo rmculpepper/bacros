@@ -250,7 +250,10 @@
 (module+ demo
   (provide (all-defined-out))
   (define stx
-    #'(begin (define a 1) (define b 2) (define c (+ a b)) (define d 5)
+    #'(begin (define a 1)
+             (define b 2)
+             (define c (+ a b))
+             (define d 5)
              (define (ka _p) a)
              (define (kka _q) ka)
              (define (f x)
