@@ -1,5 +1,6 @@
 #lang racket/base
 (require syntax/parse
+         syntax/stx
          syntax/parse/experimental/template)
 (provide tag
          new-tag
@@ -49,8 +50,8 @@
       #:literal-sets (kernel-literals)
       ;; Fully-Expanded Programs
       ;; -- module body
-      [(#%plain-module-begin form ...)
-       (T (#%plain-module-begin (recur form) ...))]
+      [(S:#%plain-module-begin form ...)
+       (T (S (recur form) ...))]
       ;; -- module-level form
       [(#%provide . _) stx]
       [(begin-for-syntax . _) stx]
@@ -58,48 +59,48 @@
       [(module* . _) stx]
       [(#%declare . _) stx]
       ;; -- general top-level form
-      [(define-values ids e)
-       (T (define-values ids (recur e)))]
+      [(S:define-values ids e)
+       (T (S ids (recur e)))]
       [(define-syntaxes . _) stx]
       [(#%require . _) stx]
       ;; -- expr
       [var:id #'var]
-      [(#%plain-lambda formals e ...)
-       (T (#%plain-lambda formals (recur e) ...))]
-      [(case-lambda [formals e ...] ...)
-       (T (case-lambda [formals (recur e) ...] ...))]
-      [(if e1 e2 e3)
-       (T (if (recur e1) (recur e2) (recur e3)))]
-      [(begin e ...)
-       (T (begin (recur e) ...))]
-      [(begin0 e ...)
-       (T (begin0 (recur e) ...))]
-      [(let-values ([vars rhs] ...) body ...)
-       (T (let-values ([vars (recur rhs)] ...)
+      [(S:#%plain-lambda formals e ...)
+       (T (S formals (recur e) ...))]
+      [(S:case-lambda [formals e ...] ...)
+       (T (S [formals (recur e) ...] ...))]
+      [(S:if e1 e2 e3)
+       (T (S (recur e1) (recur e2) (recur e3)))]
+      [(S:begin e ...)
+       (T (S (recur e) ...))]
+      [(S:begin0 e ...)
+       (T (S (recur e) ...))]
+      [(S:let-values ([vars rhs] ...) body ...)
+       (T (S ([vars (recur rhs)] ...)
             (recur body) ...))]
-      [(letrec-values ([vars rhs] ...) body ...)
-       (T (letrec-values ([vars (recur rhs)] ...)
+      [(S:letrec-values ([vars rhs] ...) body ...)
+       (T (S ([vars (recur rhs)] ...)
             (recur body) ...))]
-      [(letrec-syntaxes+values ([svars srhs] ...) ([vvars vrhs] ...) body ...)
-       (T (letrec-syntaxes+values ([svars srhs] ...) ([vvars (recur vrhs)] ...)
+      [(S:letrec-syntaxes+values ([svars srhs] ...) ([vvars vrhs] ...) body ...)
+       (T (S ([svars srhs] ...) ([vvars (recur vrhs)] ...)
             (recur body) ...))]
-      [(set! var e)
-       (T (set! var (recur e)))]
+      [(S:set! var e)
+       (T (S var (recur e)))]
       [(quote d) stx]
       [(quote-syntax . _) stx]
-      [(with-continuation-mark e1 e2 e3)
-       (T (with-continuation-mark (recur e1) (recur e2) (recur e3)))]
-      [(#%plain-app f:id e ...)
-       (T (#%plain-app (recur f) (recur e) ...))]
-      [(#%plain-app f e ...)
+      [(S:with-continuation-mark e1 e2 e3)
+       (T (S (recur e1) (recur e2) (recur e3)))]
+      [(S:#%plain-app f:id e ...)
+       (T (S (recur f) (recur e) ...))]
+      [(S:#%plain-app f e ...)
        (with-syntax ([(ftmp) (generate-temporaries #'(f))])
-         (T (recur (let-values ([(ftmp) f]) (#%plain-app ftmp e ...)))))]
+         (T (recur (let-values ([(ftmp) f]) (S ftmp e ...)))))]
       [(#%top . _) stx]
       [(#%variable-reference . _) stx]
-      [(#%expression e)
-       (T (#%expression (recur e)))]
+      [(S:#%expression e)
+       (T (S (recur e)))]
       [_
-       (raise-syntax-error #f "unhandled syntax" stx)]
+       (raise-syntax-error 'add-tags "unhandled syntax" stx)]
       ))
   ;; Rearm and track result
   (syntax-rearm
@@ -109,7 +110,7 @@
    stx0))
 
 (define (relocate stx loc-stx)
-  (datum->syntax stx (syntax-e stx) loc-stx loc-stx))
+  (datum->syntax loc-stx (syntax-e stx) loc-stx loc-stx))
 
 (define (syntax-summary stx)
   (if (syntax? stx)
