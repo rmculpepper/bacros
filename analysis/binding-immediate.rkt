@@ -15,6 +15,8 @@
 ;; | #f               -- unknown (eg define-values w/o values rhs, set!)
 ;; | Tag              -- expr, not set!
 
+;; FIXME: not a lattice! diverges on modfix w/ set!
+
 ;; ----------------------------------------
 
 ;; IMMBINDING-pre : Syntax -> Void

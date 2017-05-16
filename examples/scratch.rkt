@@ -5,7 +5,6 @@
          syntax/parse
          "../analysis/util.rkt"
          "../analysis/expkind.rkt"
-         "../analysis/binding-immediate.rkt"
          "../analysis/binding.rkt")
 (provide (all-defined-out))
 
@@ -26,7 +25,6 @@
 (define t-estx (add-tags estx))
 
 (time (modfix (lambda () (analyze-expkind t-estx))))
-(time (analyze-binding-immediate t-estx)) ;; FIXME: bad lattice
 (time (modfix (lambda () (analyze-binding t-estx))))
 
 (printf "\nVAREXP expressions:\n")
@@ -34,9 +32,6 @@
 
 (printf "\nLAMBDAEXP expressions:\n")
 (dump-tag-function LAMBDAEXP)
-
-(printf "\nIMMBINDING variables:\n")
-(dump-var-function IMMBINDING)
 
 (printf "\nBINDING variables:\n")
 (dump-var-function BINDING)
