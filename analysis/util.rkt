@@ -5,8 +5,8 @@
          syntax/id-table
          syntax/parse
          syntax/parse/experimental/template
-         "tag.rkt")
-(provide (all-from-out "tag.rkt")
+         "../tag.rkt")
+(provide (all-from-out "../tag.rkt")
          (all-defined-out))
 
 

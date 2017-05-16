@@ -3,7 +3,7 @@
          racket/set
          syntax/id-table
          syntax/parse
-         "../lib.rkt")
+         "util.rkt")
 (provide (all-defined-out))
 
 ;; ============================================================

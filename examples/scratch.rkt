@@ -3,7 +3,7 @@
          racket/set
          syntax/id-table
          syntax/parse
-         "../lib.rkt"
+         "../analysis/util.rkt"
          "../analysis/expkind.rkt"
          "../analysis/binding-immediate.rkt"
          "../analysis/binding.rkt")

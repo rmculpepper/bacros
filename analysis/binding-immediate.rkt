@@ -4,7 +4,7 @@
          syntax/id-table
          syntax/parse
          syntax/stx
-         "../lib.rkt")
+         "util.rkt")
 (provide (all-defined-out))
 
 ;; IMMBINDING : (GSTable Identifier Binding)
