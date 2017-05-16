@@ -5,7 +5,8 @@
          syntax/parse
          "../analysis/util.rkt"
          "../analysis/expkind.rkt"
-         "../analysis/binding.rkt")
+         "../analysis/binding.rkt"
+         "../analysis/tail.rkt")
 (provide (all-defined-out))
 
 (define stx
@@ -26,6 +27,7 @@
 
 (time (modfix (lambda () (analyze-expkind t-estx))))
 (time (modfix (lambda () (analyze-binding t-estx))))
+(time (modfix (lambda () (analyze-tail t-estx))))
 
 (printf "\nVAREXP expressions:\n")
 (dump-tag-function VAREXP)
@@ -35,3 +37,6 @@
 
 (printf "\nBINDING variables:\n")
 (dump-var-function BINDING)
+
+(printf "\nTAIL expressions:\n")
+(dump-tag-function TAIL)
