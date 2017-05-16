@@ -9,6 +9,10 @@
 (provide (all-from-out "tag.rkt")
          (all-defined-out))
 
+
+;; ============================================================
+;; Fixed-points
+
 ;; mods : Nat
 ;; Global counter for modifications.
 (define mods 0)
@@ -22,6 +26,22 @@
       (eprintf "** new mods, going again\n")
       (modfix proc))))
 
+
+;; ============================================================
+;; Tables with getter/setter interface
+
+;; A (GSTable K I) is (case-> [K -> I] [K I -> Void])
+
+;; make-tag-get/set : I (I I -> I) -> (GSTable (U Syntax Tag) I)
+(define (make-tag-get/set top [join (lambda (new old) new)])
+  (make-get/set (make-hash) top join
+                #:key (lambda (x) (if (syntax? x) (tag x) x))))
+
+;; make-var-get/set : I (I I -> I) -> (GSTable Identifier I)
+(define (make-var-get/set top [join (lambda (new old) new)])
+  (make-get/set (make-free-id-table) top join
+                #:key values))
+
 (struct gs (dict top join get-key)
         #:property prop:procedure
         (case-lambda
@@ -31,39 +51,37 @@
           [(self k v)
            (defmatch (gs dict top join get-key) self)
            (let* ([old (dict-ref dict (get-key k) top)]
-                  [new (join old v)])
+                  [new (join v old)])
              (unless (equal? new old)
                (set! mods (add1 mods)))
              (dict-set! dict (get-key k) new))]))
 
 ;; make-get/set : Dict[K=>V] V (V V -> V) #:key (K* -> K)
-;;             -> (case-> (K* -> V) (K* V -> Void))
+;;             -> (GSTable K* V)
 (define (make-get/set dict top join #:key [get-key values])
   (gs dict top join get-key))
-
-(define (make-tag-get/set top join)
-  (make-get/set (make-hash) top join #:key (lambda (x) (if (syntax? x) (tag x) x))))
-
-(define (make-var-get/set top join)
-  (make-get/set (make-free-id-table) top join #:key values))
 
 (define (dump-tag-function self)
   (defmatch (gs dict top join get-key) self)
   (define keys (sort (dict-keys dict) <))
   (for ([k (in-list keys)])
-    (printf "~s => ~v  -- ~a\n" k (dict-ref dict k) (tag-summary k))))
+    (printf "~s => ~v  <-- ~a\n" k (dict-ref dict k) (tag-summary k))))
 
 (define (dump-var-function self)
   (defmatch (gs dict top join get-key) self)
   (for ([(k v) (in-dict dict)])
     (printf "~s => ~v\n" k v)))
 
-;; ----------------------------------------
 
-;; traverse : Proc Proc Syntax -> Void
-(define (traverse pre post stx)
-  (define (recur . xs) (for ([x (in-list xs)]) (traverse pre post x)))
-  (define (recur* . xss) (for ([xs (in-list xss)]) (apply recur (syntax->list xs))))
+;; ============================================================
+;; Traversing Syntax
+
+;; traverse : Syntax Proc Proc -> Void
+(define (traverse stx pre [post void])
+  (define (recur . xs)
+    (for ([x (in-list xs)]) (traverse x pre post)))
+  (define (recur* . xss)
+    (for ([xs (in-list xss)]) (apply recur (syntax->list xs))))
   (begin
     (pre stx)
     (syntax-parse stx
